@@ -3,39 +3,36 @@ package game
 import (
 	"fmt"
 	"tic-tac-toe/ai"
+	"tic-tac-toe/types"
 	"tic-tac-toe/ui"
 )
 
-
 type Displayer interface {
 	ClearScreen()
-	RenderBoard(board Board, playerMarker, aiMarker Marker, winningCombo WinningCombo)
-	RenderScores(scores Score)
-	PromptMarker() (Marker, error)
-	PromptFirstTurn() (PlayerType, error)
-	PromptMove(board Board, marker Marker) (int, error)
+	RenderBoard(board types.Board, playerMarker, aiMarker types.Marker, winningCombo types.WinningCombo)
+	RenderScores(scores types.Score)
+	PromptMarker() (types.Marker, error)
+	PromptFirstTurn() (types.PlayerType, error)
+	PromptMove(board types.Board, marker types.Marker) (int, error)
 	PromptPlayAgain() (bool, error)
 	ShowMessage(msg string, style ui.MessageStyle)
 }
 
-
 type Game struct {
 	display      Displayer
-	board        Board
-	playerMarker Marker
-	aiMarker     Marker
-	currentTurn  PlayerType
-	scores       Score
+	board        types.Board
+	playerMarker types.Marker
+	aiMarker     types.Marker
+	currentTurn  types.PlayerType
+	scores       types.Score
 }
-
 
 func NewGame(display Displayer) *Game {
 	return &Game{
 		display: display,
-		scores:  Score{},
+		scores:  types.Score{},
 	}
 }
-
 
 func (g *Game) Run() {
 	for {
@@ -48,31 +45,29 @@ func (g *Game) Run() {
 	}
 }
 
-
 func (g *Game) setupGame() {
 	g.board = NewBoard()
 	var err error
 	g.playerMarker, err = g.display.PromptMarker()
 	if err != nil {
 		g.display.ShowMessage("Invalid marker, defaulting to X", ui.ErrorMessage)
-		g.playerMarker = MarkerX
+		g.playerMarker = types.MarkerX
 	}
 	g.aiMarker, _ = g.playerMarker.OppositeMarker()
 	g.currentTurn, err = g.display.PromptFirstTurn()
 	if err != nil {
 		g.display.ShowMessage("Invalid choice, player goes first", ui.ErrorMessage)
-		g.currentTurn = PlayerHuman
+		g.currentTurn = types.PlayerHuman
 	}
 }
-
 
 func (g *Game) playGame() {
 	for {
 		g.display.ClearScreen()
-		g.display.RenderBoard(g.board, g.playerMarker, g.aiMarker, WinningCombo{})
+		g.display.RenderBoard(g.board, g.playerMarker, g.aiMarker, types.WinningCombo{})
 		g.display.RenderScores(g.scores)
 
-		if g.currentTurn == PlayerHuman {
+		if g.currentTurn == types.PlayerHuman {
 			g.handlePlayerMove()
 		} else {
 			g.handleAIMove()
@@ -88,7 +83,6 @@ func (g *Game) playGame() {
 	}
 }
 
-
 func (g *Game) handlePlayerMove() {
 	for {
 		move, err := g.display.PromptMove(g.board, g.playerMarker)
@@ -99,7 +93,6 @@ func (g *Game) handlePlayerMove() {
 	}
 }
 
-
 func (g *Game) handleAIMove() {
 	g.display.ShowMessage(fmt.Sprintf("AI's turn (%s)...", g.aiMarker), ui.InfoMessage)
 	move := ai.FindBestMove(g.board, g.playerMarker, g.aiMarker)
@@ -108,23 +101,21 @@ func (g *Game) handleAIMove() {
 	}
 }
 
-
 func (g *Game) switchTurn() {
-	if g.currentTurn == PlayerHuman {
-		g.currentTurn = PlayerAI
+	if g.currentTurn == types.PlayerHuman {
+		g.currentTurn = types.PlayerAI
 	} else {
-		g.currentTurn = PlayerHuman
+		g.currentTurn = types.PlayerHuman
 	}
 }
 
-
 func (g *Game) isGameOver() bool {
-	if combo, won := g.board.CheckWin(g.playerMarker); won {
+	if _, won := g.board.CheckWin(g.playerMarker); won {
 		g.scores.Player++
 		g.display.ShowMessage("🎉 You win! 🎉", ui.WinMessage)
 		return true
 	}
-	if combo, won := g.board.CheckWin(g.aiMarker); won {
+	if _, won := g.board.CheckWin(g.aiMarker); won {
 		g.scores.AI++
 		g.display.ShowMessage("🤖 AI wins! 🤖", ui.ErrorMessage)
 		return true
@@ -137,17 +128,15 @@ func (g *Game) isGameOver() bool {
 	return false
 }
 
-
-func (g *Game) getWinningCombo() WinningCombo {
+func (g *Game) getWinningCombo() types.WinningCombo {
 	if combo, won := g.board.CheckWin(g.playerMarker); won {
 		return combo
 	}
 	if combo, won := g.board.CheckWin(g.aiMarker); won {
 		return combo
 	}
-	return WinningCombo{}
+	return types.WinningCombo{}
 }
-
 
 func (g *Game) playAgain() bool {
 	playAgain, err := g.display.PromptPlayAgain()
