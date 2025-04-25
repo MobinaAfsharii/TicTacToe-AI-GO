@@ -6,11 +6,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"tic-tac-toe/game"
+	"tic-tac-toe/types"
+
+	"slices"
 
 	"github.com/charmbracelet/lipgloss"
 )
-
 
 type MessageStyle string
 
@@ -21,19 +22,17 @@ const (
 	InfoMessage  MessageStyle = "info"
 )
 
-
 type Display struct {
 	scanner    *bufio.Scanner
 	styles     map[string]lipgloss.Style
 	boardStyle lipgloss.Style
 }
 
-
 func NewDisplay() *Display {
 	return &Display{
 		scanner: bufio.NewScanner(os.Stdin),
 		styles: map[string]lipgloss.Style{
-			"title": lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("201")).Padding(1, 2).BorderStyle(lipgloss.RoundedBorder()),
+			"title":  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("201")).Padding(1, 2).BorderStyle(lipgloss.RoundedBorder()),
 			"player": lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Bold(true),
 			"ai":     lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true),
 			"win":    lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true).Padding(1, 2).BorderStyle(lipgloss.RoundedBorder()),
@@ -46,20 +45,18 @@ func NewDisplay() *Display {
 	}
 }
 
-
 func (d *Display) ClearScreen() {
 	fmt.Print("\033[H\033[2J")
 }
 
-
-func (d *Display) RenderBoard(board game.Board, playerMarker, aiMarker game.Marker, winningCombo game.WinningCombo) {
+func (d *Display) RenderBoard(board types.Board, playerMarker, aiMarker types.Marker, winningCombo types.WinningCombo) {
 	d.ClearScreen()
 	fmt.Println(d.styles["title"].Render("Tic-Tac-Toe AI"))
 
 	grid := "\n"
 	for i := 0; i < 9; i += 3 {
 		row := make([]string, 3)
-		for j := 0; j < 3; j++ {
+		for j := range 3 {
 			idx := i + j
 			content := string(board[idx])
 			style := d.boardStyle
@@ -83,40 +80,34 @@ func (d *Display) RenderBoard(board game.Board, playerMarker, aiMarker game.Mark
 	fmt.Println(grid)
 }
 
-
-func (d *Display) RenderScores(scores game.Score) {
+func (d *Display) RenderScores(scores types.Score) {
 	scoreText := fmt.Sprintf("Player: %d | AI: %d | Draws: %d", scores.Player, scores.AI, scores.Draws)
 	fmt.Println(d.styles["score"].Render(scoreText))
 }
 
-
-func (d *Display) PromptMarker() (game.Marker, error) {
-	fmt.Printf("Choose your marker (%s or %s): ", game.MarkerX, game.MarkerO)
+func (d *Display) PromptMarker() (types.Marker, error) {
+	fmt.Printf("Choose your marker (%s or %s): ", types.MarkerX, types.MarkerO)
 	d.scanner.Scan()
 	input := strings.TrimSpace(strings.ToUpper(d.scanner.Text()))
-	marker := game.Marker(input)
+	marker := types.Marker(input)
 	if marker.IsValid() {
 		return marker, nil
 	}
-	return game.Empty, fmt.Errorf("invalid marker: %s", input)
+	return types.Empty, fmt.Errorf("invalid marker: %s", input)
 }
 
-
-func (d *Display) PromptFirstTurn() (game.PlayerType, error) {
+func (d *Display) PromptFirstTurn() (types.PlayerType, error) {
 	fmt.Print("Who goes first? (Player or AI): ")
 	d.scanner.Scan()
 	input := strings.TrimSpace(strings.Title(d.scanner.Text()))
-	playerType := game.PlayerType(input)
-	for _, pt := range game.ValidPlayerTypes() {
-		if pt == playerType {
-			return playerType, nil
-		}
+	playerType := types.PlayerType(input)
+	if slices.Contains(types.ValidPlayerTypes(), playerType) {
+		return playerType, nil
 	}
 	return "", fmt.Errorf("invalid player type: %s", input)
 }
 
-
-func (d *Display) PromptMove(board game.Board, marker game.Marker) (int, error) {
+func (d *Display) PromptMove(board types.Board, marker types.Marker) (int, error) {
 	fmt.Printf("Your turn (%s). Enter move (1-9): ", marker)
 	d.scanner.Scan()
 	input := strings.TrimSpace(d.scanner.Text())
@@ -127,12 +118,11 @@ func (d *Display) PromptMove(board game.Board, marker game.Marker) (int, error) 
 	if move < 1 || move > 9 {
 		return 0, fmt.Errorf("move out of range: %d", move)
 	}
-	if board[move-1] != game.Empty {
+	if board[move-1] != types.Empty {
 		return 0, fmt.Errorf("cell %d is not empty", move)
 	}
 	return move - 1, nil
 }
-
 
 func (d *Display) PromptPlayAgain() (bool, error) {
 	fmt.Print("Play again? (y/n): ")
@@ -147,7 +137,6 @@ func (d *Display) PromptPlayAgain() (bool, error) {
 		return false, fmt.Errorf("invalid input: %s", input)
 	}
 }
-
 
 func (d *Display) ShowMessage(msg string, style MessageStyle) {
 	fmt.Println(d.styles[string(style)].Render(msg))
